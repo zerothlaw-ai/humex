@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humex-converter-waymo"
+version = "0.2.0"
+description = "Waymo Open Dataset converter plugin for humex"
+authors = [{name = "humex contributors", email = "humex@zerothlaw.io"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+keywords = ["humex", "waymo", "autonomous-vehicles", "converter"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    # humex provides BaseConverter / ConversionResult / proto schemas.
+    # Keep the range narrow — bump on humex's API breaks.
+    "humex>=0.2,<0.3",
+    "waymo-open-dataset-tf-2-12-0>=1.6.1",
+]
+
+[project.entry-points."humex.converters"]
+# `humex convert <file>` looks the converter up by file extension via
+# WaymoConverter.can_handle. The entry-point *name* "waymo" is what
+# users type when picking a converter explicitly (e.g. for a future
+# `--converter waymo` override).
+waymo = "humex_converter_waymo:WaymoConverter"
+
+[project.urls]
+Homepage = "https://github.com/zerothlaw-ai/humex"
+Source = "https://github.com/zerothlaw-ai/humex/tree/main/converters/waymo"
+Issues = "https://github.com/zerothlaw-ai/humex/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]

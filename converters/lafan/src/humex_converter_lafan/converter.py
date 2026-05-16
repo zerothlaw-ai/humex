@@ -29,9 +29,9 @@ class LafanConverterError(Exception):
 
 
 def _bundled_h1_dir() -> Path:
-    """Locate the bundled H1 URDF assets inside the humex package."""
-    pkg_root = resources.files("humex.converters")
-    return Path(str(pkg_root)) / "assets" / "h1"
+    """Locate the bundled H1 URDF assets inside this plugin."""
+    pkg_root = resources.files("humex_converter_lafan")
+    return Path(str(pkg_root)) / "assets"
 
 
 def is_lafan_csv(path: Path) -> bool:
@@ -54,6 +54,15 @@ class LafanConverter(BaseConverter):
     Accepts either a single .csv (one motion) or a directory of them. Each
     becomes its own episode in the output.
     """
+
+    # Many CSV formats coexist in the wild — ``.csv`` alone over-matches.
+    # We override can_handle below to confirm the LAFAN1-H1 column count
+    # before claiming the file.
+    EXTENSIONS = (".csv",)
+
+    @classmethod
+    def can_handle(cls, path: Path) -> bool:
+        return is_lafan_csv(path)
 
     def __init__(self, input_path: str | Path):
         super().__init__(input_path)
@@ -87,8 +96,8 @@ class LafanConverter(BaseConverter):
         return last
 
     def _convert_one_csv(self, csv_path: Path, out_root: Path) -> ConversionResult:
-        from humex.converters.lafan_robot_converter import LafanRobotConverter
-        from humex.converters.lafan_scenario_converter import (
+        from humex_converter_lafan.robot_converter import LafanRobotConverter
+        from humex_converter_lafan.scenario_converter import (
             LafanScenarioConverter,
         )
 

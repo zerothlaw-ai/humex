@@ -26,9 +26,9 @@ class DroidConverterError(Exception):
 
 
 def _bundled_franka_dir() -> Path:
-    """Locate the URDF assets bundled inside the humex package."""
-    pkg_root = resources.files("humex.converters")
-    return Path(str(pkg_root)) / "assets" / "franka"
+    """Locate the Panda URDF assets bundled inside this plugin."""
+    pkg_root = resources.files("humex_converter_droid")
+    return Path(str(pkg_root)) / "assets"
 
 
 def _is_droid_parquet(path: Path) -> bool:
@@ -50,6 +50,16 @@ class DroidConverter(BaseConverter):
     in one file). Calling .convert() with `episode=None` writes every episode
     into its own subfolder; passing `episode=N` converts that one episode only.
     """
+
+    # `.parquet` alone is too broad — any parquet would match. We declare
+    # the extension for the cheap path (CLI listing / extension-only
+    # checks) but override can_handle below to confirm DROID-100 column
+    # shape via pandas before claiming the file.
+    EXTENSIONS = (".parquet",)
+
+    @classmethod
+    def can_handle(cls, path: Path) -> bool:
+        return _is_droid_parquet(path)
 
     def __init__(self, input_path: str | Path):
         super().__init__(input_path)
@@ -98,8 +108,8 @@ class DroidConverter(BaseConverter):
         return last_result
 
     def _convert_one_episode(self, episode_index: int, out_root: Path) -> ConversionResult:
-        from humex.converters.droid_robot_converter import DroidRobotConverter
-        from humex.converters.droid_scenario_converter import DroidScenarioConverter
+        from humex_converter_droid.robot_converter import DroidRobotConverter
+        from humex_converter_droid.scenario_converter import DroidScenarioConverter
 
         source_stem = self.input_path.stem  # e.g. "file-000"
         ep_folder = out_root / source_stem / f"episode_{episode_index:04d}"

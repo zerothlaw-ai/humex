@@ -7,7 +7,7 @@ signal states.
 
 from pathlib import Path
 from waymo_open_dataset.protos import scenario_pb2 as waymo_scenario_pb2
-from humex.converters.tfrecord_reader import read_tfrecord
+from humex_converter_waymo.tfrecord_reader import read_tfrecord
 from humex.proto import scenario_pb2, signal_pb2
 
 

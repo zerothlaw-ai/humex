@@ -1,4 +1,16 @@
-"""Convert commands for transforming raw data to humex format."""
+"""``humex convert`` — format-agnostic dispatch to installed converter plugins.
+
+The CLI no longer knows about Waymo, DROID, LAFAN, or any specific format.
+It walks :mod:`humex.converters.registry` to find converter plugins
+(installed as separate pip packages, registered via the
+``humex.converters`` entry-point group) and asks each one whether it
+:meth:`~humex.converters.base.BaseConverter.can_handle` the input.
+
+Per-converter knobs (Waymo's ``ego_id``, DROID's ``episode``, …) pass
+through as ``-O key=value`` options that are forwarded to the
+converter's ``.convert(**kwargs)``. New converters work without changes
+here — the CLI is generic.
+"""
 
 from pathlib import Path
 from typing import Optional
@@ -7,57 +19,123 @@ import click
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from humex.converters.base import BaseConverter
+from humex.converters.registry import converters as installed_converters
+from humex.converters.registry import pick as pick_converter
+
 console = Console()
 
 CONVERTED_DIR = Path("converted")
 
 
-def _find_tfrecords(directory: Path) -> list[Path]:
-    """Find all TFRecord files in a directory."""
-    return sorted([f for f in directory.iterdir() if f.is_file() and ".tfrecord" in f.name.lower()])
+def _parse_options(raw: tuple[str, ...]) -> dict[str, object]:
+    """Parse ``-O key=value`` repeats into a kwargs dict.
 
-
-def _find_parquets(directory: Path) -> list[Path]:
-    """Find all .parquet files in a directory tree.
-
-    Walks recursively because DROID-100 ships in chunked layout
-    (data/chunk-NNN/file-NNN.parquet) and we want `hume convert <root>`
-    to discover everything under it. Skips hidden dirs (e.g. .cache).
+    Tries int / float coercion; falls back to string. ``true``/``false``
+    map to bools. Unknown keys are passed through — the converter is
+    responsible for ignoring or validating them.
     """
-    matches: list[Path] = []
-    for f in directory.rglob("*.parquet"):
-        if any(p.startswith(".") for p in f.relative_to(directory).parts):
+    out: dict[str, object] = {}
+    for entry in raw:
+        if "=" not in entry:
+            raise click.BadParameter(
+                f"-O expects key=value, got {entry!r}", param_hint="-O / --opt"
+            )
+        key, value = entry.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        # Type coercion in order: bool, int, float, string.
+        if value.lower() in ("true", "false"):
+            out[key] = value.lower() == "true"
             continue
-        if f.is_file():
-            matches.append(f)
-    return sorted(matches)
-
-
-def _find_lafan_csvs(directory: Path) -> list[Path]:
-    """Find LAFAN1-shaped CSVs in a directory tree (recursive, skip hidden)."""
-    from humex.converters.lafan import is_lafan_csv
-
-    matches: list[Path] = []
-    for f in directory.rglob("*.csv"):
-        if any(p.startswith(".") for p in f.relative_to(directory).parts):
+        try:
+            out[key] = int(value)
             continue
-        if f.is_file() and is_lafan_csv(f):
-            matches.append(f)
-    return sorted(matches)
+        except ValueError:
+            pass
+        try:
+            out[key] = float(value)
+            continue
+        except ValueError:
+            pass
+        out[key] = value
+    return out
 
 
-def _is_tfrecord(path: Path) -> bool:
-    return path.is_file() and ".tfrecord" in path.name.lower()
+def _discover_files(directory: Path) -> dict[type[BaseConverter], list[Path]]:
+    """Walk ``directory`` and group files by the converter that claims them.
+
+    Each converter's ``can_handle`` may be expensive (e.g. parquet column
+    sniffing), so we ask each candidate per file only once.
+    """
+    by_converter: dict[type[BaseConverter], list[Path]] = {}
+    available = list(installed_converters().values())
+    for path in sorted(directory.rglob("*")):
+        if not path.is_file():
+            continue
+        # Skip hidden directories (`.cache/`, `.git/`, …).
+        if any(p.startswith(".") for p in path.relative_to(directory).parts):
+            continue
+        for cls in available:
+            try:
+                if cls.can_handle(path):
+                    by_converter.setdefault(cls, []).append(path)
+                    break
+            except Exception:
+                # A flaky can_handle on one converter shouldn't block discovery
+                # for siblings; surface but keep walking.
+                continue
+    return by_converter
 
 
-def _is_parquet(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() == ".parquet"
+def _run_one(
+    path: Path,
+    out: Path,
+    cls: type[BaseConverter],
+    options: dict[str, object],
+    produce_hpkg: bool,
+    summary: bool,
+) -> bool:
+    """Convert a single file. Returns True on success."""
+    from humex.converters.hpkg_packager import load_meta_for_manifest, package_as_hpkg
 
-
-def _is_lafan_csv(path: Path) -> bool:
-    from humex.converters.lafan import is_lafan_csv
-
-    return path.is_file() and is_lafan_csv(path)
+    if not summary:
+        console.print(f"[dim]Input:[/dim] {path}  [dim]→ {cls.__name__}[/dim]")
+    try:
+        converter = cls(path)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            progress.add_task("Converting...", total=None)
+            result = converter.convert(output_dir=out, **options)
+        episode_dir = result.scenario_path.parent if result.scenario_path else None
+        if produce_hpkg and episode_dir is not None:
+            hpkg_path = episode_dir.parent / f"{episode_dir.name}.hpkg"
+            package_as_hpkg(
+                episode_dir,
+                hpkg_path,
+                name=episode_dir.name,
+                source={"converter": converter.name, "input_file": path.name},
+                scenario_metadata=load_meta_for_manifest(episode_dir),
+            )
+            console.print(f"  [cyan]hpkg[/cyan] → {hpkg_path}")
+        prefix = (
+            "  [green]Done[/green]"
+            if summary
+            else "\n[green]Conversion complete![/green]"
+        )
+        console.print(f"{prefix} → {episode_dir or out}")
+        return True
+    except (FileNotFoundError, ValueError) as e:
+        prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
+        console.print(f"{prefix} {e}")
+        return False
+    except Exception as e:
+        prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
+        console.print(f"{prefix} {type(e).__name__}: {e}")
+        return False
 
 
 @click.command()
@@ -71,273 +149,145 @@ def _is_lafan_csv(path: Path) -> bool:
     help="Output directory for converted files. Defaults to ./converted/.",
 )
 @click.option(
-    "--ego-id",
-    type=int,
-    default=None,
-    help="[Waymo] ID of the ego vehicle. If unset, uses default selection.",
+    "-O",
+    "--opt",
+    "options_raw",
+    multiple=True,
+    metavar="KEY=VALUE",
+    help=(
+        "Converter-specific option, e.g. `-O ego_id=1` (Waymo), "
+        "`-O episode=0` (DROID). Repeat for multiple. Unknown keys are "
+        "ignored by the converter."
+    ),
 )
 @click.option(
-    "--episode",
-    type=int,
+    "--converter",
+    "converter_name",
     default=None,
-    help="[DROID] Convert only this episode_index. If unset, converts every episode in the parquet.",
+    help=(
+        "Pin to a specific converter by entry-point name (e.g. `waymo`, "
+        "`droid`, `lafan`). Bypasses `can_handle` detection. Useful when "
+        "multiple installed plugins claim the same extension."
+    ),
 )
 @click.option(
     "--hpkg",
     "produce_hpkg",
     is_flag=True,
     default=False,
-    help="Also write a .hpkg package alongside each converted scenario (uploadable in zeno).",
+    help="Also write a .hpkg package alongside each converted scenario.",
 )
 def convert(
     path: Path,
     output_dir: Optional[Path],
-    ego_id: Optional[int],
-    episode: Optional[int],
+    options_raw: tuple[str, ...],
+    converter_name: Optional[str],
     produce_hpkg: bool,
 ) -> None:
     """Convert a raw dataset file (or directory) to humex format.
 
-    Auto-detects the source by file extension:
-
-    \b
-      .tfrecord  -> Waymo Open Dataset
-      .parquet   -> DROID-100 (lerobot/droid_100)
-      .csv (26 cols, no header) -> LAFAN1 retargeted Unitree H1
-
-    PATH can be a single file or a directory containing supported files.
-    For a directory, every supported file is processed; you'll be prompted first.
+    The set of supported formats depends on which converter plugins are
+    installed. Run `humex plugins` to list them.
 
     \b
     Examples:
-        hume convert scenario1.tfrecord
-        hume convert ../waymo_raw_data/
-        hume convert file-000.parquet                # all episodes
-        hume convert file-000.parquet --episode 0    # one episode
-        hume convert file-000.parquet --episode 0 --hpkg   # also produce .hpkg
-        hume convert h1/walk1_subject1.csv --hpkg          # one H1 motion
-        hume convert ../lafan_raw_data/h1/                 # every H1 motion
+        humex convert scenario1.tfrecord
+        humex convert file-000.parquet -O episode=0
+        humex convert h1/walk1_subject1.csv --hpkg
+        humex convert ../waymo_raw_data/
+        humex convert foo.tfrecord --converter waymo -O ego_id=42
+
+    \b
+    Install converter plugins:
+        pip install humex-converter-waymo
+        pip install humex-converter-droid
+        pip install humex-converter-lafan
+        pip install humex[all]                # all of the above
     """
     out = output_dir or CONVERTED_DIR
+    options = _parse_options(options_raw)
+    available = installed_converters()
 
-    if path.is_file():
-        if _is_tfrecord(path):
-            _convert_one_waymo(path, out, ego_id, produce_hpkg=produce_hpkg)
-            return
-        if _is_parquet(path):
-            _convert_one_droid(path, out, episode, produce_hpkg=produce_hpkg)
-            return
-        if _is_lafan_csv(path):
-            _convert_one_lafan(path, out, produce_hpkg=produce_hpkg)
-            return
+    if not available:
         console.print(
-            f"[red]Unsupported file:[/red] {path.name}\n"
-            "Expected .tfrecord (Waymo), .parquet (DROID), or .csv (LAFAN1)."
+            "[red]No converter plugins installed.[/red]\n"
+            "Install one or more:\n"
+            "  pip install humex-converter-waymo\n"
+            "  pip install humex-converter-droid\n"
+            "  pip install humex-converter-lafan\n"
+            "Or install all at once: [bold]pip install humex\\[all][/bold]"
         )
         raise SystemExit(1)
 
-    tfrecords = _find_tfrecords(path)
-    parquets = _find_parquets(path)
-    lafan_csvs = _find_lafan_csvs(path)
-
-    if not tfrecords and not parquets and not lafan_csvs:
-        console.print(f"[yellow]No supported dataset files found in {path}[/yellow]")
+    # Explicit --converter pin overrides extension/header detection.
+    if converter_name:
+        cls = available.get(converter_name)
+        if cls is None:
+            console.print(
+                f"[red]Unknown converter:[/red] {converter_name}\n"
+                f"Installed: {', '.join(sorted(available)) or '(none)'}"
+            )
+            raise SystemExit(1)
+        if path.is_dir():
+            console.print(
+                "[red]--converter not supported for directory inputs.[/red] "
+                "Point it at a single file."
+            )
+            raise SystemExit(1)
+        ok = _run_one(path, out, cls, options, produce_hpkg, summary=False)
+        if not ok:
+            raise SystemExit(1)
         return
 
-    if tfrecords:
-        console.print(f"\nFound [bold]{len(tfrecords)}[/bold] Waymo scenario(s) in {path}:\n")
-        for f in tfrecords:
-            console.print(f"  [dim]-[/dim] {f.name}")
-    if parquets:
-        console.print(f"\nFound [bold]{len(parquets)}[/bold] DROID parquet(s) in {path}:\n")
-        for f in parquets:
-            console.print(f"  [dim]-[/dim] {f.name}")
-    if lafan_csvs:
-        console.print(f"\nFound [bold]{len(lafan_csvs)}[/bold] LAFAN1 CSV(s) in {path}:\n")
-        for f in lafan_csvs:
-            console.print(f"  [dim]-[/dim] {f.name}")
+    # Single file: detection via registry.
+    if path.is_file():
+        cls = pick_converter(path)
+        if cls is None:
+            console.print(
+                f"[red]No installed converter recognizes:[/red] {path.name}\n"
+                f"Installed converters: {', '.join(sorted(available)) or '(none)'}"
+            )
+            raise SystemExit(1)
+        ok = _run_one(path, out, cls, options, produce_hpkg, summary=False)
+        if not ok:
+            raise SystemExit(1)
+        return
+
+    # Directory: group files by the converter that claims each, batch.
+    grouped = _discover_files(path)
+    if not grouped:
+        console.print(
+            f"[yellow]No supported files found in {path}[/yellow]\n"
+            f"Installed converters: {', '.join(sorted(available)) or '(none)'}"
+        )
+        return
+
+    total_count = sum(len(files) for files in grouped.values())
+    console.print(
+        f"\nFound [bold]{total_count}[/bold] file(s) across "
+        f"{len(grouped)} converter(s):\n"
+    )
+    for cls, files in grouped.items():
+        console.print(f"  [cyan]{cls.__name__}[/cyan] ({len(files)}):")
+        for f in files[:5]:
+            console.print(f"    [dim]-[/dim] {f.name}")
+        if len(files) > 5:
+            console.print(f"    [dim]… and {len(files) - 5} more[/dim]")
     console.print()
 
     if not click.confirm("Convert all?"):
         console.print("[dim]Aborted.[/dim]")
         return
 
-    succeeded = 0
-    failed = 0
-
-    for tfrecord in tfrecords:
-        console.print(f"\n[bold]{tfrecord.name}[/bold]")
-        try:
-            _convert_one_waymo(tfrecord, out, ego_id, summary=True, produce_hpkg=produce_hpkg)
-            succeeded += 1
-        except SystemExit:
-            failed += 1
-
-    for parquet in parquets:
-        console.print(f"\n[bold]{parquet.name}[/bold]")
-        try:
-            _convert_one_droid(parquet, out, episode, summary=True, produce_hpkg=produce_hpkg)
-            succeeded += 1
-        except SystemExit:
-            failed += 1
-
-    for csv in lafan_csvs:
-        console.print(f"\n[bold]{csv.name}[/bold]")
-        try:
-            _convert_one_lafan(csv, out, summary=True, produce_hpkg=produce_hpkg)
-            succeeded += 1
-        except SystemExit:
-            failed += 1
+    succeeded = failed = 0
+    for cls, files in grouped.items():
+        for f in files:
+            console.print(f"\n[bold]{f.name}[/bold]")
+            if _run_one(f, out, cls, options, produce_hpkg, summary=True):
+                succeeded += 1
+            else:
+                failed += 1
 
     console.print(f"\n[bold]Results:[/bold] {succeeded} converted, {failed} failed")
-
-
-def _convert_one_waymo(
-    path: Path,
-    out: Path,
-    ego_id: Optional[int],
-    summary: bool = False,
-    produce_hpkg: bool = False,
-) -> None:
-    from humex.converters.waymo import WaymoConverter, WaymoConverterError
-    from humex.converters.hpkg_packager import (
-        load_meta_for_manifest,
-        package_as_hpkg,
-    )
-
-    if not summary:
-        console.print(f"[dim]Input:[/dim] {path}")
-    try:
-        converter = WaymoConverter(path)
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task("Converting...", total=None)
-            result = converter.convert(output_dir=out, ego_id=ego_id)
-        episode_dir = result.scenario_path.parent
-        if produce_hpkg:
-            hpkg_path = episode_dir.parent / f"{episode_dir.name}.hpkg"
-            package_as_hpkg(
-                episode_dir,
-                hpkg_path,
-                name=episode_dir.name,
-                source={"converter": "waymo", "input_file": path.name},
-                scenario_metadata=load_meta_for_manifest(episode_dir),
-            )
-            console.print(f"  [cyan]hpkg[/cyan] → {hpkg_path}")
-        prefix = "  [green]Done[/green]" if summary else "\n[green]Conversion complete![/green]"
-        console.print(f"{prefix} → {episode_dir}")
-    except (WaymoConverterError, FileNotFoundError, ValueError) as e:
-        prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
-        console.print(f"{prefix} {e}")
-        raise SystemExit(1)
-
-
-def _convert_one_lafan(
-    path: Path,
-    out: Path,
-    summary: bool = False,
-    produce_hpkg: bool = False,
-) -> None:
-    from humex.converters.lafan import LafanConverter, LafanConverterError
-    from humex.converters.hpkg_packager import (
-        load_meta_for_manifest,
-        package_as_hpkg,
-    )
-
-    if not summary:
-        console.print(f"[dim]Input:[/dim] {path}")
-    try:
-        converter = LafanConverter(path)
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task("Converting...", total=None)
-            result = converter.convert(output_dir=out)
-        episode_dir = result.scenario_path.parent
-        if produce_hpkg:
-            hpkg_path = episode_dir.parent / f"{episode_dir.name}.hpkg"
-            package_as_hpkg(
-                episode_dir,
-                hpkg_path,
-                name=episode_dir.name,
-                source={"converter": "lafan", "input_file": path.name},
-                scenario_metadata=load_meta_for_manifest(episode_dir),
-            )
-            console.print(f"  [cyan]hpkg[/cyan] → {hpkg_path}")
-        prefix = "  [green]Done[/green]" if summary else "\n[green]Conversion complete![/green]"
-        console.print(f"{prefix} → {episode_dir}")
-    except (LafanConverterError, FileNotFoundError, ValueError) as e:
-        prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
-        console.print(f"{prefix} {e}")
-        raise SystemExit(1)
-
-
-def _convert_one_droid(
-    path: Path,
-    out: Path,
-    episode: Optional[int],
-    summary: bool = False,
-    produce_hpkg: bool = False,
-) -> None:
-    from humex.converters.droid import DroidConverter, DroidConverterError
-    from humex.converters.hpkg_packager import (
-        load_meta_for_manifest,
-        package_as_hpkg,
-    )
-
-    if not summary:
-        ep_label = f"episode {episode}" if episode is not None else "all episodes"
-        console.print(f"[dim]Input:[/dim] {path}  [dim]({ep_label})[/dim]")
-    try:
-        converter = DroidConverter(path)
-        # When packaging into hpkg, we need to know which episodes were touched
-        # (one or many) to package each separately. Derive that here so the
-        # batch case still produces one .hpkg per episode.
-        if produce_hpkg:
-            from humex.converters.droid import DroidConverter as _DC  # noqa: F401
-            episodes = (
-                [episode]
-                if episode is not None
-                else converter._list_episode_indices()
-            )
-        else:
-            episodes = []
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            progress.add_task("Converting...", total=None)
-            result = converter.convert(output_dir=out, episode=episode)
-        if produce_hpkg:
-            source_stem = path.stem  # mirrors DroidConverter._convert_one_episode
-            for ep in episodes:
-                ep_dir = Path(out) / source_stem / f"episode_{ep:04d}"
-                hpkg_path = ep_dir.parent / f"{ep_dir.name}.hpkg"
-                package_as_hpkg(
-                    ep_dir,
-                    hpkg_path,
-                    name=ep_dir.name,
-                    source={
-                        "converter": "droid",
-                        "input_file": path.name,
-                        "episode_index": ep,
-                    },
-                    scenario_metadata=load_meta_for_manifest(ep_dir),
-                )
-                console.print(f"  [cyan]hpkg[/cyan] → {hpkg_path}")
-        prefix = "  [green]Done[/green]" if summary else "\n[green]Conversion complete![/green]"
-        # `result.scenario_path` points at the last episode written. Surface the
-        # source-file root (parent's parent) so batch runs print the dir containing
-        # every episode_NNNN/ subfolder.
-        target = result.scenario_path.parent if episode is not None else result.scenario_path.parent.parent
-        console.print(f"{prefix} → {target}")
-    except (DroidConverterError, FileNotFoundError, ValueError) as e:
-        prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
-        console.print(f"{prefix} {e}")
+    if failed:
         raise SystemExit(1)

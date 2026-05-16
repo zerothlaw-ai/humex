@@ -28,7 +28,13 @@ from .api import (
 )
 from .hmap import HMap, LaneMap, RoadMap, RoleTable, build_lane_map, build_role_table
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
+
+# Plugin-API version. Converter plugins may declare a ``MIN_HUMEX_API_VERSION``
+# class attr; the registry skips converters whose minimum exceeds this value
+# instead of letting an incompatible plugin crash the host. Bump on breaking
+# changes to BaseConverter / ConversionResult / registry contracts.
+__api_version__ = 1
 
 __all__ = [
     "ScenarioAPI",

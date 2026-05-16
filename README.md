@@ -95,7 +95,7 @@ modify, redistribute, and embed humex (including in commercial products)
 provided you keep the copyright notice and the LICENSE file with the code.
 
 See [`NOTICE`](NOTICE) for the copyright statement and a list of vendored
-components, and [`AUTHORS`](AUTHORS) for the contributor roster.
+components.
 
 **Dependency licenses.** All runtime dependencies are OSI-approved
 permissive licenses (BSD, MIT, Apache 2.0). The HTTPS client `requests`

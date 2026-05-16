@@ -22,12 +22,17 @@ FORMAT_VERSION = "0.3.0"
 class WaymoConverter(BaseConverter):
     """Converter for Waymo Open Dataset TFRecord files.
 
-    This converter transforms Waymo TFRecord scenario files into
-    humex-compatible protobuf files.
-
-    Requires the 'waymo' optional dependencies:
-        pip install humex[waymo]
+    Ships as the standalone ``humex-converter-waymo`` package — install
+    alongside ``humex`` to enable. The TF / waymo-open-dataset deps live
+    here and are never pulled into a clean ``humex`` install.
     """
+
+    # Recognised file shapes:
+    #   regular: foo.tfrecord
+    #   sharded: foo.tfrecord-00031-of-01000
+    # The substring form (no leading dot) lets BaseConverter.can_handle
+    # pick up both via its name-contains fallback.
+    EXTENSIONS = (".tfrecord", "tfrecord")
 
     def __init__(self, input_path: str | Path):
         """Initialize the Waymo converter.
@@ -40,23 +45,10 @@ class WaymoConverter(BaseConverter):
             ValueError: If the file is not a TFRecord file.
         """
         super().__init__(input_path)
-
-        # Validate file extension (supports both .tfrecord and sharded .tfrecord-XXXXX-of-XXXXX)
-        if not self._is_tfrecord_file(self.input_path):
+        if not self.can_handle(self.input_path):
             raise ValueError(
                 f"Expected a .tfrecord file, got: {self.input_path.name}"
             )
-
-    @staticmethod
-    def _is_tfrecord_file(path: Path) -> bool:
-        """Check if a path is a TFRecord file (regular or sharded).
-
-        Supports:
-        - Regular: file.tfrecord
-        - Sharded: file.tfrecord-00031-of-01000
-        """
-        name = path.name.lower()
-        return ".tfrecord" in name
 
     @property
     def name(self) -> str:
@@ -69,8 +61,8 @@ class WaymoConverter(BaseConverter):
             from waymo_open_dataset.protos import scenario_pb2  # noqa: F401
         except ImportError as e:
             raise WaymoConverterError(
-                "Waymo conversion requires waymo dependencies. "
-                "Install with: pip install humex[waymo]"
+                "Waymo conversion requires the waymo-open-dataset package. "
+                "Install with: pip install humex-converter-waymo"
             ) from e
 
     def convert(
@@ -100,8 +92,8 @@ class WaymoConverter(BaseConverter):
         """
         self._check_dependencies()
 
-        from humex.converters.waymo_map_converter import WaymoMapConverter
-        from humex.converters.waymo_scenario_converter import WaymoScenarioConverter
+        from humex_converter_waymo.map_converter import WaymoMapConverter
+        from humex_converter_waymo.scenario_converter import WaymoScenarioConverter
 
         # Generate UUID for this conversion
         conversion_uuid = str(uuid.uuid4())[:8]

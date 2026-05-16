@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "humex"
-version = "0.1.0"
+version = "0.2.0"
 description = "Behavioral metrics for autonomous-vehicle and physical-AI scenarios"
 authors = [{name = "humex contributors", email = "humex@zerothlaw.io"}]
 readme = "README.md"
@@ -24,7 +24,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -52,8 +51,17 @@ test = [
     "pytest>=7.0",
     "pytest-cov>=3.0",
 ]
-waymo = [
-    "waymo-open-dataset-tf-2-12-0>=1.6.1",
+# Convenience meta-extras for installing converter plugins alongside the
+# core. Each plugin is its own PyPI package with its own deps; these
+# extras just bundle them so `pip install humex[all]` keeps working for
+# users who want the same one-line install as before the split.
+waymo = ["humex-converter-waymo"]
+droid = ["humex-converter-droid"]
+lafan = ["humex-converter-lafan"]
+all = [
+    "humex-converter-waymo",
+    "humex-converter-droid",
+    "humex-converter-lafan",
 ]
 dev = [
     "ruff>=0.4.0",

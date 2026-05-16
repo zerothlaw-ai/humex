@@ -1,0 +1,19 @@
+# Workspace root for the humex monorepo.
+#
+# This file does NOT publish to PyPI — it only configures the uv workspace so
+# `uv sync` installs every member package (core + converter plugins) in
+# editable mode. Each member has its own pyproject.toml under its directory.
+#
+# Members:
+#   humex/                  — core package (published as `humex`)
+#   converters/*/           — converter plugin packages
+#                             (published as `humex-converter-<name>`)
+#
+# Adding a new converter is just `mkdir converters/<name>` with its own
+# pyproject.toml — no edit here required, the glob picks it up.
+
+[tool.uv.workspace]
+members = [
+    "humex",
+    "converters/*",
+]

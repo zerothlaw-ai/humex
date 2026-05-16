@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humex-converter-droid"
+version = "0.2.0"
+description = "DROID-100 (Franka Panda) converter plugin for humex"
+authors = [{name = "humex contributors", email = "humex@zerothlaw.io"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+keywords = ["humex", "droid", "robotics", "franka", "converter"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "humex>=0.2,<0.3",
+    "pandas>=1.5",
+    "pyarrow>=10",
+    "numpy>=1.23",
+]
+
+[project.entry-points."humex.converters"]
+droid = "humex_converter_droid:DroidConverter"
+
+[project.urls]
+Homepage = "https://github.com/zerothlaw-ai/humex"
+Source = "https://github.com/zerothlaw-ai/humex/tree/main/converters/droid"
+Issues = "https://github.com/zerothlaw-ai/humex/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+# Panda URDF + meshes shipped alongside the converter so end users don't
+# have to download Franka assets separately. resources.files() locates
+# them inside the wheel.
+"humex_converter_droid" = ["assets/**/*"]
