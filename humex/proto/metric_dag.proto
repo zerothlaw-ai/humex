@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package humex.proto;
+
+/**
+ * Represents a single node in a Metric Computation DAG.
+ * Each node is either a monitor (data source) or an operator (transformation).
+ */
+message NodeProto {
+  int32 id = 1;                           // Node unique identifier
+  string type = 2;                        // "monitor" or "operator"
+  string name = 3;                        // Operator/monitor name
+  string description = 4;                 // Node description
+  repeated int32 inputs = 5;              // Input node IDs (dependencies)
+  map<string, string> params = 6;         // Node parameters as string key-value pairs
+  repeated string tags = 7;               // Node tags/labels
+}
+
+/**
+ * Metadata for the entire DAG.
+ */
+message MetricDAGMetadata {
+  string description = 1;                 // DAG description
+  string source_file = 2;                 // Path to source YAML file
+}
+
+/**
+ * Complete Metric Computation DAG representation.
+ * Represents a directed acyclic graph of metric computation nodes
+ * that can be executed to compute metrics from monitoring data.
+ */
+message MetricDAGProto {
+  map<int32, NodeProto> nodes = 1;        // All nodes keyed by node ID
+  MetricDAGMetadata metadata = 2;         // DAG-level metadata
+}

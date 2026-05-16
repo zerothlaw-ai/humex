@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package humex.proto;
+
+// Traffic signal state for a specific lane
+message SignalState {
+  // Signal state enum matching Waymo's TrafficSignalLaneState
+  enum State {
+    LANE_STATE_UNKNOWN = 0;
+    LANE_STATE_ARROW_STOP = 1;
+    LANE_STATE_ARROW_CAUTION = 2;
+    LANE_STATE_ARROW_GO = 3;
+    LANE_STATE_STOP = 4;
+    LANE_STATE_CAUTION = 5;
+    LANE_STATE_GO = 6;
+    LANE_STATE_FLASHING_STOP = 7;
+    LANE_STATE_FLASHING_CAUTION = 8;
+  }
+
+  int32 lane_id = 1;        // Map lane ID this signal applies to
+  State state = 2;           // Current signal state
+}
+
+// Signal states for all lanes at a specific timestamp
+message SignalFrame {
+  int64 timestamp = 1;                   // Timestamp in nanoseconds
+  repeated SignalState lane_signals = 2; // Signal states for lanes with active signals
+}
+
+// Complete signal data for a scenario (time-series)
+message SignalData {
+  string scenario_id = 1;          // Associated scenario identifier
+  repeated SignalFrame frames = 2;  // Time-series signal data (one per scenario frame)
+}

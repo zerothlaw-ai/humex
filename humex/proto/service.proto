@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package humex.proto;
+
+import "scenario.proto";
+import "map.proto";
+import "metric_result.proto";
+import "signal.proto";
+
+service SimulationService {
+  // Run a simulation with the given scenario
+  rpc RunSimulation(SimulationRequest) returns (SimulationResult) {}
+}
+
+service MetricsService {
+  // Compute metrics for a scenario
+  rpc ComputeMetrics(MetricsRequest) returns (MetricsResult) {}
+}
+
+service ScenarioService {
+  // Load a scenario by ID
+  rpc LoadScenario(ScenarioLoadRequest) returns (ScenarioData) {}
+
+  // Load a map by ID
+  rpc LoadMap(MapLoadRequest) returns (MapData) {}
+}
+
+message SimulationRequest {
+  ScenarioData scenario = 1;
+  MapData map = 2;
+  SimulationConfig config = 3;
+}
+
+message SimulationResult {
+  bool success = 1;
+  string message = 2;
+  ScenarioData result_scenario = 3;
+  repeated Frame frames = 4;
+}
+
+message SimulationConfig {
+  float max_simulation_time = 1;
+  float time_step = 2;
+  map<string, string> options = 3;
+}
+
+message MetricsRequest {
+  ScenarioData scenario_data = 1;
+  string analyzer_config_name = 2;
+  MapData map_data = 3;
+  SignalData signal_data = 4;
+}
+
+message MetricsResult {
+  bool success = 1;
+  string message = 2;
+  MetricResult metric_result = 3;
+}
+
+message ScenarioLoadRequest {
+  string scenario_id = 1;
+}
+
+message MapLoadRequest {
+  string map_id = 1;
+}

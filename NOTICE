@@ -1,0 +1,27 @@
+humex
+Copyright 2026 humex contributors
+
+This product is licensed under the Apache License, Version 2.0
+(see the LICENSE file in this repository).
+
+----------------------------------------------------------------------
+
+Bundled / vendored components
+-----------------------------
+
+humex vendors the following components, all of which were originally
+authored by humex contributors and are released under the same Apache
+License, Version 2.0 as humex itself:
+
+  * The Protocol Buffer schemas under ``proto/`` and the generated
+    Python bindings under ``src/humex/proto/``.
+  * The dataset converters under ``src/humex/converters/`` (Waymo,
+    DROID-100, LAFAN1).
+  * The HD-map subsystem under ``src/humex/hmap/`` (``HMap`` facade,
+    ``LaneMap``, ``RoadMap``, role table builder).
+
+No third-party source code is bundled in this distribution. Required
+third-party libraries (numpy, scipy, shapely, protobuf, click, rich,
+PyYAML, requests, networkx) are installed at runtime via pip and
+remain governed by their respective upstream licenses (BSD, MIT,
+Apache 2.0, MPL 2.0).

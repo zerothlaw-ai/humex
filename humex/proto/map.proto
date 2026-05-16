@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package humex.proto;
+
+// Point data structure representing 3D coordinates
+message PointData {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+}
+
+// Segment containing a sequence of points
+message SegmentData {
+    repeated PointData points = 1;
+}
+
+// Lane data with centerline and boundaries
+message LaneData {
+    int32 id = 1;
+    repeated SegmentData center_line = 2;
+    repeated SegmentData left_boundary = 3;
+    repeated SegmentData right_boundary = 4;
+    double speed_limit = 5;  // Speed limit in m/s
+    PointData stop_point = 6;  // Where vehicle must stop (unified from traffic signals and stop signs)
+    bool has_stop_sign = 7;    // Whether this lane is controlled by a stop sign
+}
+
+// Lane connectivity information
+message LaneConnections {
+    int32 lane_id = 1;
+    repeated int32 connected_lane_ids = 2;
+}
+
+// Complete map data structure
+message MapData {
+    // Core lane data
+    map<int32, LaneData> lanes = 1;
+
+    // Lane connectivity information
+    repeated LaneConnections next_lanes = 2;
+    repeated LaneConnections prev_lanes = 3;
+    repeated LaneConnections left_lanes = 4;
+    repeated LaneConnections right_lanes = 5;
+
+    // Map metadata
+    string map_name = 6;
+    double version = 7;
+    string created_at = 8;
+}
+
+// Top-level map message for serialization
+message Map {
+    string name = 1;
+    MapData map_data = 2;
+}

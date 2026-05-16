@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package humex.proto;
+
+/**
+ * Metric Evaluation Result - Generic metric frame-level and scenario-level reporting.
+ *
+ * MetricResult is organized around the DAG structure with leaf nodes as evaluation endpoints.
+ * Completely analyzer-agnostic: contains raw evaluation results without business logic.
+ * Interpretation (naming, visualization) happens in consuming applications.
+ */
+
+/**
+ * Frame-level result for a single leaf node in the metric evaluation DAG.
+ * Contains per-timestamp evaluation results and source monitor values.
+ */
+message MetricLeafFrameResult {
+  int64 timestamp = 1;              // Timestamp in nanoseconds
+  oneof frame_value {
+    double numeric_value = 2;       // Numeric monitor value
+    bool boolean_value = 3;         // Boolean monitor value
+    string string_value = 4;        // String value representation
+  }
+  bool frame_result = 5;            // Per-frame comparison result (boolean)
+}
+
+/**
+ * Complete result for a single leaf node in the metric evaluation DAG.
+ * A leaf node is a node with no outgoing edges in the DAG graph.
+ */
+message MetricLeafNodeResult {
+  int32 node_id = 1;                // Leaf node ID
+  string name = 2;                  // Node name (if defined in DAG)
+
+  // Frame-level results
+  repeated MetricLeafFrameResult frame_results = 3;
+
+  // Scenario-level results (aggregated from frame-level)
+  oneof reduced_value {
+    double numeric_reduced = 4;     // Reduced/aggregated numeric value
+    bool boolean_reduced = 5;       // Reduced/aggregated boolean value
+    string string_reduced = 6;      // Reduced/aggregated string value
+  }
+  bool reduced_result = 7;          // Scenario-level pass/fail result
+
+  // Data lineage tracking
+  repeated int32 source_monitor_ids = 8;  // Monitor node IDs that produced source data
+}
+
+/**
+ * Result for any node (monitor or operator) in the metric evaluation DAG.
+ * Contains frame-level values without scenario-level reduction.
+ * Used for displaying intermediate computation values in the UI.
+ */
+message MetricAllNodeResult {
+  int32 node_id = 1;                          // Node ID in the DAG
+  string node_type = 2;                       // "monitor" or "operator"
+  string name = 3;                            // Node name (monitor name or operator type)
+  repeated MetricLeafFrameResult frame_results = 4;  // Frame-level values (reuses existing type)
+  repeated int32 input_ids = 5;               // IDs of input nodes (for operators)
+  map<string, string> params = 6;             // Operator parameters (for operators)
+}
+
+/**
+ * Complete metric evaluation result.
+ * Pure data structure containing evaluation results for all leaf nodes.
+ * No business logic, interpretation, or scenario context - that's for consuming applications.
+ */
+message MetricResult {
+  // Evaluation metadata
+  int64 evaluation_timestamp = 1;   // Evaluation timestamp in nanoseconds
+  string dag_description = 2;       // Description of the evaluated DAG
+
+  // Results for each leaf node in the DAG
+  repeated MetricLeafNodeResult leaf_node_results = 3;
+
+  // Scenario-level result (AND logic combining all leaf node results)
+  bool final_result = 4;
+
+  // Performance metadata
+  double evaluation_time_seconds = 5;  // Time to evaluate in seconds
+  int32 nodes_evaluated = 6;           // Number of DAG nodes evaluated
+  int32 total_nodes = 7;               // Total nodes in DAG
+
+  // All node results (monitors + operators) for detailed inspection
+  repeated MetricAllNodeResult all_node_results = 8;
+
+  // Path to the metric config file that generated these results
+  string config_path = 9;
+}

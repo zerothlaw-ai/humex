@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package humex.proto;
+
+// Pre-computed per-frame ego-relative agent role table. Built during Stage 2
+// of the conversion-task pipeline, after lane_map.pb is available. Stored as
+// the sidecar `role.pb` next to scenario.pb / map.pb / lane_map.pb.
+//
+// Monitors (front_vehicle_distance, front_vehicle_id, lateral_distance, ...)
+// short-circuit to this table when present, avoiding per-frame BFS+Frenet
+// recomputation. The builder uses ground-truth future ego trajectory rather
+// than greedy forward BFS, so role assignments here are also more accurate
+// than what the runtime can compute (it doesn't know where ego will turn).
+
+// Distance band between ego bbox and the role agent's bbox.
+message DistanceRange {
+    // Min bbox-to-bbox distance, meters. 0.0 if the polygons intersect.
+    double closest = 1;
+    // Max corner-to-corner distance, meters. Always >= closest.
+    double farthest = 2;
+}
+
+// One agent role assignment for one frame.
+message AgentRole {
+    int32 agent_id = 1;
+    DistanceRange distance = 2;
+    // Centerline arc-length gap from ego, signed: positive when the agent
+    // is ahead of ego in the forward corridor; negative when behind in the
+    // rear corridor. Useful for monitors that want a centerline metric
+    // instead of the bbox band.
+    double s_gap = 3;
+}
+
+// Per-frame role bundle. Singular message fields are unset (HasField False)
+// when there's no agent in that role at this frame.
+message FrameRoles {
+    int32 frame_index = 1;
+    int64 timestamp_ns = 2;
+
+    // v1 — populated by build_role_table v1.0
+    AgentRole front = 3;
+    AgentRole rear  = 4;
+
+    // v2 — reserved, unset in v1. v2 will populate using
+    // lane_map.left_lane_ids / right_lane_ids of ego's current lane.
+    AgentRole left_lead     = 5;
+    AgentRole left_follow   = 6;
+    AgentRole right_lead    = 7;
+    AgentRole right_follow  = 8;
+
+    // v2 — reserved, unset in v1. Closest agent on a lane that physically
+    // crosses ego's forward path within ~30m. Will use
+    // lane_map.overlapping_lane_ids (added in lane_map v2.1).
+    AgentRole cross_traffic = 9;
+
+    // v2 — multi-point lane occupancy for every non-ego agent in this
+    // frame. Each entry holds the disambiguated lane_id for the agent's
+    // five reference points (centroid + 4 bbox corners). Empty for v1
+    // role_tables.
+    repeated AgentLaneFrame agent_lanes = 10;
+
+    // v2.1 — alongside roles. An agent in the immediate left/right lane
+    // whose centerline projection longitudinally OVERLAPS ego's bbox
+    // (|s_a - s_ego_side| <= (ego.length + agent.length) / 2 + slack).
+    // Mutually exclusive with the corresponding lead / follow on the
+    // same side. Unset (HasField False) when no candidate.
+    AgentRole left_alongside  = 11;
+    AgentRole right_alongside = 12;
+}
+
+// Lane-id assignment for the five reference points of an agent's bbox.
+// 0 = unassigned (off-road or outside any drivable polygon).
+message PointLaneAssignment {
+    int32 center       = 1;
+    int32 front_left   = 2;
+    int32 front_right  = 3;
+    int32 rear_left    = 4;
+    int32 rear_right   = 5;
+}
+
+message AgentLaneFrame {
+    int32 agent_id = 1;
+    PointLaneAssignment lanes = 2;
+}
+
+// Per-agent disambiguated corridor — the de-duplicated lane sequence each
+// of the agent's five reference points traces across the trajectory.
+// Built once by the v2 role-table builder using corridor_id continuity.
+message AgentCorridor {
+    int32 agent_id = 1;
+    repeated int32 center_corridor      = 2;
+    repeated int32 front_left_corridor  = 3;
+    repeated int32 front_right_corridor = 4;
+    repeated int32 rear_left_corridor   = 5;
+    repeated int32 rear_right_corridor  = 6;
+}
+
+// Top-level role artifact.
+message RoleTable {
+    // Pinned at build time so we know which scenarios need re-processing
+    // when the builder algorithm changes. Example: "role-table-v2.0".
+    string algorithm_version = 1;
+
+    int32 ego_id = 2;
+    int32 frame_count = 3;
+
+    // One entry per frame, ordered by frame_index ascending. Length equals
+    // frame_count. Frames where neither front nor rear is set are still
+    // emitted (with HasField False on all roles) so the index aligns with
+    // scenario frame indices.
+    repeated FrameRoles frames = 4;
+
+    // v2 — one AgentCorridor per agent (including ego). Empty for v1
+    // role_tables.
+    repeated AgentCorridor agent_corridors = 5;
+}

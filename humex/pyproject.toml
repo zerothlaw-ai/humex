@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "humex"
+version = "0.1.0"
+description = "Behavioral metrics for autonomous-vehicle and physical-AI scenarios"
+authors = [{name = "humex contributors", email = "humex@zerothlaw.io"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+keywords = [
+    "autonomous-vehicles",
+    "robotics",
+    "scenarios",
+    "metrics",
+    "simulation",
+    "waymo",
+    "droid",
+    "lafan",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy==1.23.5",
+    "shapely==2.1.1",
+    "scipy>=1.10.0",
+    "PyYAML==6.0.3",
+    "protobuf>=3.20.0,<5.0.0",
+    "networkx>=2.6",
+    "requests>=2.28.0",
+    "click>=8",
+    "rich>=13",
+]
+
+[project.optional-dependencies]
+local = [
+    "matplotlib>=3.6.1,<4.0",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=3.0",
+]
+waymo = [
+    "waymo-open-dataset-tf-2-12-0>=1.6.1",
+]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.8",
+]
+
+[project.urls]
+Homepage = "https://github.com/zerothlaw-ai/humex"
+Source = "https://github.com/zerothlaw-ai/humex"
+Issues = "https://github.com/zerothlaw-ai/humex/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"humex.api.ai_api.prompts" = ["*.txt"]
+"humex.proto" = ["*.pyi", "py.typed"]
+
+[project.scripts]
+humex = "humex.cli.main:cli"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"

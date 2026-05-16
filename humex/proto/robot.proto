@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package humex.proto;
+
+// Static description of an articulated robot. Keyed by Object.id in scenario.roster —
+// the corresponding scenario.Object provides the base link's pose (Statepoint), bounding
+// dimensions, and ego flag. This message carries only what scenario.proto cannot: a URDF
+// reference and a canonical joint ordering for the packed per-frame arrays in RobotState.
+message RobotDescription {
+  // Matches scenario.Object.id in the scenario's roster.
+  int32 object_id = 1;
+
+  // Workspace-relative path to the robot's URDF file. Mesh assets referenced by the URDF
+  // are expected to be co-located and resolved by the renderer.
+  string urdf_path = 2;
+
+  // Canonical joint order — defines the layout of all packed arrays in RobotState.
+  // Names must match URDF joint names exactly. Limited to single-DOF joints (revolute,
+  // continuous, prismatic) for v1.
+  repeated string joint_names = 3;
+
+  // Optional human-readable label (defaults to URDF robot name).
+  string display_name = 4;
+
+  // Field tags 5..15 reserved for forward-compatibility (e.g., JointType enum, mimic
+  // joint table, urdf_inline, robot_kind).
+}
+
+// Per-frame state for one robot. Base-link pose is NOT duplicated here — it lives in
+// scenario.Frame.obj_list[object_id].sp.
+message RobotState {
+  // Matches scenario.Object.id. Used to look up the corresponding base pose in
+  // scenario.Frame.obj_list and the description in RobotData.roster.
+  int32 object_id = 1;
+
+  // Joint values in the order declared by RobotDescription.joint_names.
+  // Units: radians for revolute/continuous joints, meters for prismatic.
+  // Length must equal joint_names.size() when non-empty.
+  repeated double joint_positions = 2 [packed = true];
+
+  // Optional. When present, must be the same length as joint_positions.
+  repeated double joint_velocities = 3 [packed = true];
+
+  // Optional. When present, must be the same length as joint_positions.
+  repeated double joint_efforts = 4 [packed = true];
+
+  // Field tags 5..15 reserved (e.g., link_poses for pre-computed FK, sensor_payloads).
+}
+
+// Per-timestamp container, keyed by object_id. Mirrors scenario.Frame.obj_list keying.
+message RobotFrame {
+  // Nanoseconds. Must match a scenario.Frame.timestamp 1:1 when both files are present.
+  int64 timestamp = 1;
+
+  // Per-robot state for this frame, keyed by object_id.
+  map<int32, RobotState> robot_list = 2;
+}
+
+// Top-level wrapper. Sidecar to scenario.pb / map.pb / signal.pb on disk; loaded only
+// when present. Parallel in shape to ScenarioData (roster + frames).
+message RobotData {
+  // Static descriptions keyed by object_id. Parallel to scenario.roster.
+  map<int32, RobotDescription> roster = 1;
+
+  // Per-frame robot state. Frames keyed by string timestamp to mirror
+  // ScenarioData.frames so a consumer can join by key directly.
+  map<string, RobotFrame> frames = 2;
+}

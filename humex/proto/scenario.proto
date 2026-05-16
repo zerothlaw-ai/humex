@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package humex.proto;
+
+message Statepoint {
+  message Position {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+  }
+  message Velocity {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+  }
+  message Acceleration {
+    double x = 1;
+    double y = 2;
+    double z = 3;
+  }
+  message Heading {
+    double roll = 1;
+    double pitch = 2;
+    double yaw = 3;
+  }
+  Position position = 1;
+  Velocity velocity = 2;
+  Heading heading = 3;
+  Acceleration acceleration = 4;
+}
+
+message Object {
+  int32 id = 1;
+  double length = 2;
+  double width = 3;
+  double height = 4;
+  bool is_ego = 5;
+  Statepoint sp = 6;
+  string object_type = 7;  // "car", "pedestrian", "cyclist", "truck", etc.
+}
+
+message Frame {
+  int32 frame_id = 1;
+  int64 timestamp = 2;  // Timestamp in nanoseconds (int64)
+  map<int32, Object> obj_list = 3;
+}
+
+message ScenarioData {
+  double frequency = 1;
+  double duration = 2;
+  string map_name = 3;
+  map<int32, Object> roster = 4;
+  map<string, Frame> frames = 5;
+  int32 ego_id = 6;
+}

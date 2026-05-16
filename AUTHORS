@@ -1,0 +1,23 @@
+humex authors
+=============
+
+humex is maintained by its contributors. The project welcomes pull
+requests under the terms of the Apache License, Version 2.0 (see
+LICENSE).
+
+By submitting code or other content to this repository, contributors
+agree that their contributions are licensed under the same license
+(inbound = outbound).
+
+Contact
+-------
+
+  humex@zerothlaw.io — general project contact, PyPI maintainer
+
+Original authors
+----------------
+
+  * Liu Liu — initial design, hmap subsystem, role-table builder,
+    dataset converter framework
+
+(Add yourself here in a pull request when you contribute.)

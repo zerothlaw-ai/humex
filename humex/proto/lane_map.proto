@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package humex.proto;
+
+import "map.proto";
+
+// Derived, source-agnostic lane representation. Built from a canonical Map
+// during scenario import (Stage 2 of the conversion-task pipeline). Stored as
+// the sidecar `lane_map.pb` next to scenario.pb / map.pb. Monitors that
+// migrate read this in preference to the source MapData; legacy monitors
+// continue to read MapData unchanged.
+
+// Turn classification for synthesised intersection connectors.
+enum TurnType {
+    TURN_UNKNOWN = 0;
+    TURN_STRAIGHT = 1;
+    TURN_LEFT = 2;
+    TURN_RIGHT = 3;
+    TURN_U_TURN = 4;
+}
+
+// A single lane in the cleaned graph. Either an existing lane (preserving its
+// source id) or a synthesised intersection connector (`is_connector = true`).
+message LaneMapLane {
+    int32 id = 1;
+    bool is_connector = 2;
+
+    // Cleaned, re-sampled centerline. Multiple SegmentData blocks support
+    // discontinuous lanes (rare; usually one block).
+    repeated SegmentData center_line = 3;
+
+    // Average lane width in meters, derived from source boundaries when
+    // available, otherwise a class default.
+    double width_estimate = 4;
+
+    // Lane-graph connectivity. Mirrors Map conventions but includes
+    // synthesised connectors so monitors can walk the graph through
+    // intersections without falling off a cliff.
+    repeated int32 next_lane_ids = 5;
+    repeated int32 prev_lane_ids = 6;
+    repeated int32 left_lane_ids = 7;
+    repeated int32 right_lane_ids = 8;
+
+    // Set on synthesised connectors. UNKNOWN on regular lanes.
+    TurnType turn_type = 9;
+
+    // Carried over from the source lane when present. Optional.
+    PointData stop_point = 10;
+    bool has_stop_sign = 11;
+
+    // Provenance for v2 (rebuild-from-centerline) lanes. Each segment is a
+    // 5m slice of an original source lane; these fields let monitors and
+    // humans trace `segment 14732 -> source_lane_id 6428, s in [10.0, 15.0]`
+    // when investigating misclassifications. Zero / unset on v1 lane_maps
+    // and on synthesised connectors.
+    int32 source_lane_id = 12;
+    double s_start = 13;
+    double s_end = 14;
+
+    // Lanes whose drivable polygon (centerline +/- half-width) intersects
+    // this lane's polygon, EXCLUDING self, prev_lane_ids, next_lane_ids,
+    // left_lane_ids, right_lane_ids. Captures genuine crossings: intersection
+    // connectors that physically cross each other, merge points, etc. Empty
+    // on v1 / v2.0 lane_maps; populated by builder >= v2.1.
+    repeated int32 overlapping_lane_ids = 15;
+
+    // Maximal-unambiguous-chain identifier. Two lanes share the same
+    // corridor_id iff they're part of one continuous drivable strip with no
+    // branches/merges between them — i.e., walking next_lane_ids from one
+    // reaches the other without ever facing a choice. 0 = unset (older
+    // lane_maps); populated by builder >= v2.2. Used by the role-table v2
+    // builder for O(1) per-point lane disambiguation: of multiple
+    // overlapping-polygon candidates, prefer the one in the same corridor
+    // as the previous frame's pick.
+    int32 corridor_id = 16;
+
+    // v3.0: per-segment fitted boundaries. When the source Map had
+    // usable left_boundary / right_boundary point lists, the builder
+    // slices them alongside the centerline so the segment's drivable
+    // polygon hugs the real road edge instead of a parallel offset of
+    // the centerline. Empty when the source lacked boundaries — the
+    // runtime falls back to centerline +/- width_estimate / 2 (smooth
+    // because the v3 center_line keeps intermediate sample points).
+    repeated SegmentData left_boundary = 17;
+    repeated SegmentData right_boundary = 18;
+}
+
+// A junction group — the set of lanes (regular + connector) that share an
+// intersection. Used by role-assignment queries that want to know
+// "is this agent currently in an intersection".
+message Intersection {
+    int32 id = 1;
+    repeated int32 lane_ids = 2;
+    PointData centroid = 3;
+}
+
+// Top-level lane_map artifact.
+message LaneMapData {
+    // Pinned at build time so we know which scenarios need re-processing
+    // when the builder algorithm changes. Example: "lane-map-v1.0".
+    string algorithm_version = 1;
+
+    // Name of the source Map this was derived from. Audit only.
+    string source_map_name = 2;
+
+    // Build wall-clock timestamp in nanoseconds since the epoch.
+    int64 built_at_unix_ns = 3;
+
+    // All lanes — regular AND synthesised connectors — keyed by id. The
+    // `is_connector` flag distinguishes them. Single map (not split) keeps
+    // graph traversal natural.
+    map<int32, LaneMapLane> lanes = 4;
+
+    // Inferred intersection groups.
+    repeated Intersection intersections = 5;
+}
