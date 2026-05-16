@@ -396,8 +396,8 @@ class RoadMapLoader:
                             format_type = "json"
                         else:
                             format_type = "protobuf"
-                except:
-                    format_type = "json"  # Fallback to JSON
+                except OSError:
+                    format_type = "json"  # Unreadable header → assume JSON
         
         if format_type == "json":
             return RoadMapLoader.from_json_file(path)

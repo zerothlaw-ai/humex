@@ -258,7 +258,3 @@ class Trajectory(object):
         return lat_dist, lng_dist
 
 
-if __name__=='__main__':
-    angle = -1.15 * 180.0 / math.pi
-    result = Trajectory.get_min_equal_heading(angle * math.pi / 180.0)
-    print(result * 180.0 / math.pi)

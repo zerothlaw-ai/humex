@@ -1,11 +1,12 @@
 # humex
 
-**Behavioral metrics for autonomous-vehicle and physical-AI scenarios.**
+**Hu**man-**U**nderstandable **ME**trics for everything (**X**).
 
-`humex` converts raw recorded or simulated trajectory data into a vendor-neutral
-scenario protobuf and computes behavioral metrics (front / rear / side neighbors,
-lane occupancy, ego-relative roles, custom metric DAGs) over it — dataset- and
-simulator-agnostic.
+Behavioral metrics for autonomous-vehicle and physical-AI scenarios. `humex`
+converts raw recorded or simulated trajectory data into a vendor-neutral
+scenario protobuf and computes behavioral metrics (front / rear / side
+neighbors, lane occupancy, ego-relative roles, custom metric DAGs) over it —
+dataset- and simulator-agnostic.
 
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 
@@ -37,7 +38,7 @@ humex lane-map ./converted/<scenario_name>
 # 3. Compute a metric DAG over it
 humex evaluate ./converted/<scenario_name> --metric configs/front_distance.yaml
 
-# 4. Package as a portable .hpkg
+# 4. Re-package as a portable .humex archive (convert already does this by default)
 humex package ./converted/<scenario_name>
 ```
 
@@ -110,8 +111,7 @@ project (inbound = outbound — no separate CLA required).
 ## Contributing
 
 Pull requests welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
-contributor guide and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for
-expected conduct.
+contributor guide.
 
 ## Contact
 

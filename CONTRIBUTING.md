@@ -86,7 +86,3 @@ When reporting a bug, include:
 2. Python version and OS
 3. The dataset / scenario you were processing (or a minimal repro)
 4. Full traceback
-
-## Code of conduct
-
-By participating, you agree to abide by the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).

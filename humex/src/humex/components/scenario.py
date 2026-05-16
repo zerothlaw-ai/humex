@@ -126,7 +126,3 @@ class Scenario(object):
 
 
 
-if __name__=='__main__':
-    x = Scenario(duration=9.2)
-
-    print(x.frames)

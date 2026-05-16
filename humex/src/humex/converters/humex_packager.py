@@ -1,20 +1,23 @@
-"""Package a per-episode converter output as a .hpkg (zenocompatible).
+"""Package a converted scenario directory into a portable ``.humex`` file.
 
-Hume packages are zips with this layout, which zeno's /api/import-package route
-expects::
+A ``.humex`` file is a zip archive with this layout::
 
     manifest.json
     scenario/
         scenario.pb
         map.pb
         meta.json
+        [lane_map.pb]    # built by humex.convert.run_pipeline
+        [role.pb]        # built by humex.convert.run_pipeline
         [signal.pb]      # AV scenarios only
         [robot.pb]       # articulated-robot scenarios only
         [robots/...]     # URDF + meshes referenced by robot.pb
 
 The packager doesn't care which converter produced the input directory — it
 just zips up whatever is there. DROID episodes carry robot.pb + robots/;
-Waymo scenarios carry signal.pb. Both flow through unchanged.
+Waymo scenarios carry signal.pb. Both flow through unchanged. Standard zip
+tools (``unzip``, ``python -m zipfile``) can crack a ``.humex`` open without
+this library.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-def package_as_hpkg(
+def package_as_humex(
     episode_dir: Path,
     output_path: Path,
     *,
@@ -34,7 +37,7 @@ def package_as_hpkg(
     source: Optional[dict[str, Any]] = None,
     scenario_metadata: Optional[dict[str, Any]] = None,
 ) -> Path:
-    """Zip ``episode_dir`` into a .hpkg at ``output_path``.
+    """Zip ``episode_dir`` into a ``.humex`` file at ``output_path``.
 
     Returns the output path on success. Raises ``FileNotFoundError`` if the
     input dir is missing scenario.pb or map.pb.

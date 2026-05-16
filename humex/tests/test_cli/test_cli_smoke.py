@@ -49,4 +49,4 @@ def test_package_help():
     runner = CliRunner()
     result = runner.invoke(cli, ["package", "--help"])
     assert result.exit_code == 0
-    assert ".hpkg" in result.output
+    assert ".humex" in result.output

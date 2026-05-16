@@ -1,6 +1,7 @@
 # humex (core)
 
-Behavioral metrics for autonomous-vehicle and physical-AI scenarios.
+**Hu**man-**U**nderstandable **ME**trics for everything (**X**) — behavioral
+metrics for autonomous-vehicle and physical-AI scenarios.
 
 This is the core `humex` package — `ScenarioAPI`, `HMap`, metric DAGs,
 monitors, and the CLI. **Converters ship as separate packages** so heavy

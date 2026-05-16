@@ -537,11 +537,9 @@ class ScenarioAPI:
         Returns:
             Scenario: Enhanced scenario with velocity and acceleration data
         """
-        from ...utils.data_enhancer import DataEnhancer
+        from ...convert.enhance import enhance_scenario
 
-        scenario = DataEnhancer.enhance_scenario_with_velocities(scenario)
-        scenario = DataEnhancer.enhance_scenario_with_accelerations(scenario)
-        return scenario
+        return enhance_scenario(scenario)
 
     @staticmethod
     def _resample_scenario_pb(scenario_pb, new_frequency: float):

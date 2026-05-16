@@ -93,11 +93,24 @@ def _run_one(
     out: Path,
     cls: type[BaseConverter],
     options: dict[str, object],
-    produce_hpkg: bool,
+    skip_pack: bool,
     summary: bool,
+    skip_pipeline: bool = False,
 ) -> bool:
-    """Convert a single file. Returns True on success."""
-    from humex.converters.hpkg_packager import load_meta_for_manifest, package_as_hpkg
+    """Convert a single file end-to-end. Returns True on success.
+
+    Runs the plugin extraction (stage 1), then enhance → lane_map → role
+    (stages 2–4) via :func:`humex.convert.run_pipeline`, then packages the
+    resulting directory into a ``<name>.humex`` archive next to it. Stages
+    2–4 are best-effort: per-stage failures are printed but don't fail the
+    command overall, mirroring hume's stage-2 semantics.
+
+    Pass ``skip_pipeline=True`` (CLI ``--raw``) to leave the plugin's output
+    untouched. Pass ``skip_pack=True`` (CLI ``--no-pack``) to skip the
+    ``.humex`` packaging step and keep only the unpacked directory.
+    """
+    from humex.converters.humex_packager import load_meta_for_manifest, package_as_humex
+    from humex.convert import run_pipeline
 
     if not summary:
         console.print(f"[dim]Input:[/dim] {path}  [dim]→ {cls.__name__}[/dim]")
@@ -108,25 +121,43 @@ def _run_one(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            progress.add_task("Converting...", total=None)
+            progress.add_task("Extracting...", total=None)
             result = converter.convert(output_dir=out, **options)
         episode_dir = result.scenario_path.parent if result.scenario_path else None
-        if produce_hpkg and episode_dir is not None:
-            hpkg_path = episode_dir.parent / f"{episode_dir.name}.hpkg"
-            package_as_hpkg(
+
+        # Stages 2-4: enhance + lane_map + role.
+        if episode_dir is not None and not skip_pipeline:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console,
+            ) as progress:
+                progress.add_task("Enhancing + building sidecars...", total=None)
+                pipeline_result = run_pipeline(episode_dir, force=True)
+            for line in pipeline_result.summary_lines():
+                tag = "[green]OK[/green]" if line.startswith("OK") else "[yellow]FAIL[/yellow]"
+                console.print(f"  {tag} {line.split(maxsplit=1)[1]}")
+
+        # Default: pack the result into a portable .humex file. Disabled
+        # by --no-pack or --raw (raw output isn't worth packaging).
+        humex_path: Optional[Path] = None
+        if episode_dir is not None and not skip_pack and not skip_pipeline:
+            humex_path = episode_dir.parent / f"{episode_dir.name}.humex"
+            package_as_humex(
                 episode_dir,
-                hpkg_path,
+                humex_path,
                 name=episode_dir.name,
                 source={"converter": converter.name, "input_file": path.name},
                 scenario_metadata=load_meta_for_manifest(episode_dir),
             )
-            console.print(f"  [cyan]hpkg[/cyan] → {hpkg_path}")
+            console.print(f"  [cyan].humex[/cyan] → {humex_path}")
+
         prefix = (
             "  [green]Done[/green]"
             if summary
             else "\n[green]Conversion complete![/green]"
         )
-        console.print(f"{prefix} → {episode_dir or out}")
+        console.print(f"{prefix} → {humex_path or episode_dir or out}")
         return True
     except (FileNotFoundError, ValueError) as e:
         prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
@@ -171,18 +202,34 @@ def _run_one(
     ),
 )
 @click.option(
-    "--hpkg",
-    "produce_hpkg",
+    "--no-pack",
+    "skip_pack",
     is_flag=True,
     default=False,
-    help="Also write a .hpkg package alongside each converted scenario.",
+    help=(
+        "Skip packaging the result into a .humex archive — leave only the "
+        "unpacked output directory. By default each converted scenario is "
+        "packaged into a <name>.humex file next to the directory."
+    ),
+)
+@click.option(
+    "--raw",
+    "skip_pipeline",
+    is_flag=True,
+    default=False,
+    help=(
+        "Skip post-extraction processing (enhance / lane_map / role) AND "
+        ".humex packaging. Outputs only what the converter plugin produced. "
+        "Useful for debugging plugin output or doing your own post-processing."
+    ),
 )
 def convert(
     path: Path,
     output_dir: Optional[Path],
     options_raw: tuple[str, ...],
     converter_name: Optional[str],
-    produce_hpkg: bool,
+    skip_pack: bool,
+    skip_pipeline: bool,
 ) -> None:
     """Convert a raw dataset file (or directory) to humex format.
 
@@ -193,7 +240,7 @@ def convert(
     Examples:
         humex convert scenario1.tfrecord
         humex convert file-000.parquet -O episode=0
-        humex convert h1/walk1_subject1.csv --hpkg
+        humex convert h1/walk1_subject1.csv --no-pack
         humex convert ../waymo_raw_data/
         humex convert foo.tfrecord --converter waymo -O ego_id=42
 
@@ -234,7 +281,7 @@ def convert(
                 "Point it at a single file."
             )
             raise SystemExit(1)
-        ok = _run_one(path, out, cls, options, produce_hpkg, summary=False)
+        ok = _run_one(path, out, cls, options, skip_pack, summary=False, skip_pipeline=skip_pipeline)
         if not ok:
             raise SystemExit(1)
         return
@@ -248,7 +295,7 @@ def convert(
                 f"Installed converters: {', '.join(sorted(available)) or '(none)'}"
             )
             raise SystemExit(1)
-        ok = _run_one(path, out, cls, options, produce_hpkg, summary=False)
+        ok = _run_one(path, out, cls, options, skip_pack, summary=False, skip_pipeline=skip_pipeline)
         if not ok:
             raise SystemExit(1)
         return
@@ -283,7 +330,7 @@ def convert(
     for cls, files in grouped.items():
         for f in files:
             console.print(f"\n[bold]{f.name}[/bold]")
-            if _run_one(f, out, cls, options, produce_hpkg, summary=True):
+            if _run_one(f, out, cls, options, skip_pack, summary=True, skip_pipeline=skip_pipeline):
                 succeeded += 1
             else:
                 failed += 1

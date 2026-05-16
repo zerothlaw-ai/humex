@@ -28,7 +28,6 @@ class MapBuilder(object):
         pass
 
     def extend_straight_lane(self, prev_lane=None, length=None, width=None, heading=None, target_interval=1):
-        print('add straight')
         lane = LaneData(self.id_assigner.next())
         p_num = int(length // target_interval)
         actual_interval = length / p_num
@@ -62,7 +61,6 @@ class MapBuilder(object):
         return lane
 
     def extend_curved_lane(self, prev_lane=None, length=10.0, width=None, target_interval=1, radius=None, cw=False):
-        print('add curved')
         lane = LaneData(self.id_assigner.next())
         prev_lane_id = None
         if prev_lane is None:

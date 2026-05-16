@@ -10,7 +10,7 @@ What stays here:
 - :class:`BaseConverter` — the contract every plugin subclasses.
 - :class:`ConversionResult` — return type from ``convert()``.
 - :mod:`humex.converters.registry` — entry-point discovery.
-- ``hpkg_packager`` — format-agnostic packaging used by the CLI.
+- :mod:`humex.converters.humex_packager` — format-agnostic ``.humex`` archive packaging used by the CLI.
 """
 
 from humex.converters.base import BaseConverter, ConversionResult

@@ -1,12 +1,22 @@
-"""Data enhancement utilities for autonomous vehicle scenario analysis.
+"""Velocity / acceleration enhancement — Stage 2A of the conversion pipeline.
 
-This module provides enhancement functions to calculate missing or improved
-kinematic data (velocity, acceleration) from raw position data in Waymo scenarios.
-All enhancements work with the internal humex data structures.
+Plugin converters (Waymo, DROID, LAFAN) extract raw position tracks; many of
+them do not populate velocity or acceleration. This module recomputes those
+from positions using central differencing on interior frames and forward /
+backward differencing at track endpoints, with a heading-based fallback for
+outliers.
+
+Public entry point: :func:`enhance_scenario` mutates a loaded scenario in
+place and returns it. The legacy :class:`DataEnhancer` namespace is preserved
+for callers that still reference it.
 """
 
-from .math_helper import calculate_velocity_from_positions, calculate_velocity_from_heading_and_speed
-from .timestamp import to_seconds
+import logging
+
+from ..utils.math_helper import calculate_velocity_from_positions, calculate_velocity_from_heading_and_speed
+from ..utils.timestamp import to_seconds
+
+logger = logging.getLogger(__name__)
 
 
 # Per-frame quality limits used by both velocity and acceleration enhancement.
@@ -96,7 +106,7 @@ class DataEnhancer(object):
         Returns:
             scenario: Same scenario with velocities populated.
         """
-        print("Enhancing scenario with calculated velocities...")
+        logger.debug("Enhancing scenario with calculated velocities")
 
         tracks = _collect_position_tracks(scenario)
         enhanced_objects = 0
@@ -116,7 +126,7 @@ class DataEnhancer(object):
                 try:
                     velocity = calculate_velocity_from_positions(p1, p2, dt)
                 except (ValueError, ZeroDivisionError) as e:
-                    print(f"Warning: Could not calculate velocity for object {obj_id} at frame {i}: {e}")
+                    logger.warning("Could not calculate velocity for object %s at frame %d: %s", obj_id, i, e)
                     obj.sp.update_velocity((0.0, 0.0, 0.0))
                     continue
 
@@ -138,7 +148,7 @@ class DataEnhancer(object):
                 else:
                     obj.sp.update_velocity((0.0, 0.0, 0.0))
 
-        print(f"Enhanced {enhanced_objects} object velocity measurements across {len(scenario.frames)} frames")
+        logger.debug("Enhanced %d object velocity measurements across %d frames", enhanced_objects, len(scenario.frames))
         return scenario
 
     @staticmethod
@@ -156,7 +166,7 @@ class DataEnhancer(object):
         Returns:
             scenario: Same scenario with accelerations populated.
         """
-        print("Enhancing scenario with calculated accelerations...")
+        logger.debug("Enhancing scenario with calculated accelerations")
 
         tracks = _collect_velocity_tracks(scenario)
         enhanced_objects = 0
@@ -176,7 +186,7 @@ class DataEnhancer(object):
                 try:
                     acceleration = calculate_velocity_from_positions(v1, v2, dt)
                 except (ValueError, ZeroDivisionError) as e:
-                    print(f"Warning: Could not calculate acceleration for object {obj_id} at frame {i}: {e}")
+                    logger.warning("Could not calculate acceleration for object %s at frame %d: %s", obj_id, i, e)
                     obj.sp.update_acceleration((0.0, 0.0, 0.0))
                     continue
 
@@ -187,5 +197,16 @@ class DataEnhancer(object):
                 else:
                     obj.sp.update_acceleration((0.0, 0.0, 0.0))
 
-        print(f"Enhanced {enhanced_objects} object acceleration measurements across {len(scenario.frames)} frames")
+        logger.debug("Enhanced %d object acceleration measurements across %d frames", enhanced_objects, len(scenario.frames))
         return scenario
+
+
+def enhance_scenario(scenario):
+    """Run both velocity and acceleration enhancement on ``scenario`` in place.
+
+    Order matters — acceleration is derived from velocity, so velocity must be
+    populated first. Returns the same scenario object.
+    """
+    DataEnhancer.enhance_scenario_with_velocities(scenario)
+    DataEnhancer.enhance_scenario_with_accelerations(scenario)
+    return scenario

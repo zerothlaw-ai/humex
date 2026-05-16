@@ -46,9 +46,9 @@ def evaluate(scenario_dir: Path, metric_yaml: Path, output_dir: Optional[Path]) 
     out = output_dir or scenario_dir / "results"
     out.mkdir(parents=True, exist_ok=True)
 
-    console.print(f"[dim]Loading[/dim] {scenario_pb}")
+    console.print(f"[dim]Loading[/dim] {scenario_dir}")
     api = ScenarioAPI()
-    scenario = api.load_from_proto_files(str(scenario_pb))
+    scenario = api.load_from_folder(str(scenario_dir))
 
     console.print(f"[dim]Running DAG[/dim] {metric_yaml}")
     compute = ComputeAnalyzerMetricsAPI()
