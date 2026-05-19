@@ -37,6 +37,9 @@ env/
 *~
 .DS_Store
 
+# Local AI tool metadata (Claude Code session state, plans, settings)
+.claude/
+
 # Project-specific - Data folders (keep folder structure, ignore generated files)
 data/scenarios/*
 !data/scenarios/.gitkeep
