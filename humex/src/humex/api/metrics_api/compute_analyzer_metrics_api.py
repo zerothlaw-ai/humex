@@ -133,7 +133,7 @@ class ComputeAnalyzerMetricsAPI:
 
                 print(f"Loading scenario from folder {folder_path.name}...")
                 scenario = self.scenario_api.load_from_folder(
-                    folder_path=str(folder_path),
+                    scenario_folder_path=str(folder_path),
                     enhance=True,  # Automatically calculate velocities/accelerations
                 )
                 scenario_name_from_path = folder_path.name

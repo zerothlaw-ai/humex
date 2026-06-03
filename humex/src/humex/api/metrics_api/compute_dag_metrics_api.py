@@ -157,7 +157,7 @@ class ComputeDagMetricsAPI:
 
             print(f"Loading scenario from folder {scenario_folder_path.name}...")
             scenario = self.scenario_api.load_from_folder(
-                folder_path=str(scenario_folder_path),
+                scenario_folder_path=str(scenario_folder_path),
                 enhance=True  # Calculate velocities and accelerations
             )
             scenario_name = scenario_folder_path.name
