@@ -101,15 +101,15 @@ def _run_one(
 
     Runs the plugin extraction (stage 1), then enhance → lane_map → role
     (stages 2–4) via :func:`humex.convert.run_pipeline`, then packages the
-    resulting directory into a ``<name>.humex`` archive next to it. Stages
+    resulting directory into a ``<name>.hpkg`` archive next to it. Stages
     2–4 are best-effort: per-stage failures are printed but don't fail the
     command overall, mirroring hume's stage-2 semantics.
 
     Pass ``skip_pipeline=True`` (CLI ``--raw``) to leave the plugin's output
     untouched. Pass ``skip_pack=True`` (CLI ``--no-pack``) to skip the
-    ``.humex`` packaging step and keep only the unpacked directory.
+    ``.hpkg`` packaging step and keep only the unpacked directory.
     """
-    from humex.converters.humex_packager import load_meta_for_manifest, package_as_humex
+    from humex.converters.hpkg_packager import load_meta_for_manifest, package_as_hpkg
     from humex.convert import run_pipeline
 
     if not summary:
@@ -138,26 +138,26 @@ def _run_one(
                 tag = "[green]OK[/green]" if line.startswith("OK") else "[yellow]FAIL[/yellow]"
                 console.print(f"  {tag} {line.split(maxsplit=1)[1]}")
 
-        # Default: pack the result into a portable .humex file. Disabled
+        # Default: pack the result into a portable .hpkg file. Disabled
         # by --no-pack or --raw (raw output isn't worth packaging).
-        humex_path: Optional[Path] = None
+        hpkg_path: Optional[Path] = None
         if episode_dir is not None and not skip_pack and not skip_pipeline:
-            humex_path = episode_dir.parent / f"{episode_dir.name}.humex"
-            package_as_humex(
+            hpkg_path = episode_dir.parent / f"{episode_dir.name}.hpkg"
+            package_as_hpkg(
                 episode_dir,
-                humex_path,
+                hpkg_path,
                 name=episode_dir.name,
                 source={"converter": converter.name, "input_file": path.name},
                 scenario_metadata=load_meta_for_manifest(episode_dir),
             )
-            console.print(f"  [cyan].humex[/cyan] → {humex_path}")
+            console.print(f"  [cyan].hpkg[/cyan] → {hpkg_path}")
 
         prefix = (
             "  [green]Done[/green]"
             if summary
             else "\n[green]Conversion complete![/green]"
         )
-        console.print(f"{prefix} → {humex_path or episode_dir or out}")
+        console.print(f"{prefix} → {hpkg_path or episode_dir or out}")
         return True
     except (FileNotFoundError, ValueError) as e:
         prefix = "  [red]Failed:[/red]" if summary else "[red]Error:[/red]"
@@ -207,9 +207,9 @@ def _run_one(
     is_flag=True,
     default=False,
     help=(
-        "Skip packaging the result into a .humex archive — leave only the "
+        "Skip packaging the result into a .hpkg archive — leave only the "
         "unpacked output directory. By default each converted scenario is "
-        "packaged into a <name>.humex file next to the directory."
+        "packaged into a <name>.hpkg file next to the directory."
     ),
 )
 @click.option(
@@ -219,7 +219,7 @@ def _run_one(
     default=False,
     help=(
         "Skip post-extraction processing (enhance / lane_map / role) AND "
-        ".humex packaging. Outputs only what the converter plugin produced. "
+        ".hpkg packaging. Outputs only what the converter plugin produced. "
         "Useful for debugging plugin output or doing your own post-processing."
     ),
 )

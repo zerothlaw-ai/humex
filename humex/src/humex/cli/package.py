@@ -1,4 +1,4 @@
-"""``humex package`` — wrap a converted scenario directory into a portable ``.humex`` file."""
+"""``humex package`` — wrap a converted scenario directory into a portable ``.hpkg`` file."""
 
 from pathlib import Path
 from typing import Optional
@@ -6,7 +6,7 @@ from typing import Optional
 import click
 from rich.console import Console
 
-from humex.converters.humex_packager import load_meta_for_manifest, package_as_humex
+from humex.converters.hpkg_packager import load_meta_for_manifest, package_as_hpkg
 
 console = Console()
 
@@ -19,10 +19,10 @@ console = Console()
     "output_path",
     type=click.Path(path_type=Path),
     default=None,
-    help="Output .humex path. Defaults to <scenario_dir>.humex next to the source.",
+    help="Output .hpkg path. Defaults to <scenario_dir>.hpkg next to the source.",
 )
 def package(scenario_dir: Path, output_path: Optional[Path]) -> None:
-    """Package a scenario directory as a portable .humex file.
+    """Package a scenario directory as a portable .hpkg file.
 
     The directory must contain at minimum scenario.pb + map.pb + meta.json.
     lane_map.pb and role.pb sidecars are included if present.
@@ -30,12 +30,12 @@ def package(scenario_dir: Path, output_path: Optional[Path]) -> None:
     \b
     Example:
         humex package converted/segment-1234
-        humex package converted/segment-1234 -o out/segment-1234.humex
+        humex package converted/segment-1234 -o out/segment-1234.hpkg
     """
-    target = output_path or scenario_dir.parent / f"{scenario_dir.name}.humex"
+    target = output_path or scenario_dir.parent / f"{scenario_dir.name}.hpkg"
     target.parent.mkdir(parents=True, exist_ok=True)
 
-    package_as_humex(
+    package_as_hpkg(
         scenario_dir,
         target,
         name=scenario_dir.name,

@@ -11,8 +11,6 @@ QUICK START - BASIC IMPORTS
     from humex.api.core_apis import (
         ScenarioAPI,
         SimulationAPI,
-        ConvertAnalyzerMetricsAPI,
-        ComputeAnalyzerMetricsAPI,
         ComputeDagMetricsAPI,
         VisualizeDagAPI,
         MonitorDiscoveryAPI,
@@ -37,12 +35,6 @@ SIMULATION APIs
 
 METRICS COMPUTATION APIs
 ========================
-  • ConvertAnalyzerMetricsAPI
-    Convert analyzer/logic YAML configs to unified DAG YAML format
-
-  • ComputeAnalyzerMetricsAPI
-    End-to-end metrics computation: load scenario → convert analyzer → evaluate
-
   • ComputeDagMetricsAPI
     End-to-end metrics computation: load scenario → load DAG directly → evaluate
 
@@ -74,7 +66,6 @@ from .scenario_api import ScenarioAPI
 # Simulation APIs
 from .simulation_api import (
     RunSimulationAPI,
-    RunSimulationWithAnalyzerMetricsAPI,
     RunSimulationWithDagMetricsAPI,
 )
 
@@ -83,8 +74,6 @@ from .preview_api import KeyframePreviewAPI
 
 # Metrics Computation APIs
 from .metrics_api import (
-    ConvertAnalyzerMetricsAPI,
-    ComputeAnalyzerMetricsAPI,
     ComputeDagMetricsAPI,
     VisualizeDagAPI,
     MonitorDiscoveryAPI,
@@ -101,13 +90,10 @@ __all__ = [
     "ScenarioAPI",
     # Simulation APIs
     "RunSimulationAPI",
-    "RunSimulationWithAnalyzerMetricsAPI",
     "RunSimulationWithDagMetricsAPI",
     # Preview APIs
     "KeyframePreviewAPI",
     # Metrics Computation APIs
-    "ConvertAnalyzerMetricsAPI",
-    "ComputeAnalyzerMetricsAPI",
     "ComputeDagMetricsAPI",
     "VisualizeDagAPI",
     "MonitorDiscoveryAPI",

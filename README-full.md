@@ -7,35 +7,7 @@ common scenario format and computing behavioral metrics over it. Datasets,
 simulators, and metric definitions are all pluggable.
 
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org)
-
----
-
-## Install
-
-```bash
-pip install humex                          # core (small)
-pip install humex[all]                     # core + every official converter
-pip install humex humex-converter-waymo    # core + just one converter
-```
-
-Available converter plugins, each a separate PyPI package:
-
-| Plugin | Recognises | Heavy deps |
-|---|---|---|
-| `humex-converter-waymo` | `*.tfrecord` (incl. sharded) | waymo-open-dataset, TF |
-| `humex-converter-droid` | `*.parquet` (DROID-100) | pandas, pyarrow |
-| `humex-converter-lafan` | `*.csv` (LAFAN1 H1) | pandas |
-
-Bare `pip install humex` stays clean — heavy deps live in their plugin
-packages, not the core.
-
-## Quickstart
-
-```bash
-pip install humex[all]                              # all converters
-
-# 1. Convert a raw dataset → scenario directory + .humex archive
+# 1. Convert a raw dataset → scenario directory + .hpkg archive
 humex convert path/to/scenario.tfrecord -o ./converted/
 
 # 2. See what's installed

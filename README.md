@@ -6,23 +6,53 @@ A vendor-neutral library for turning AV / robotics trajectory data into a
 common scenario format and computing behavioral metrics over it. Datasets,
 simulators, and metric definitions are all pluggable.
 
-> **Status: beta.** humex is currently being tested internally; a public
-> release is planned but not yet out, and the package is not on PyPI
-> yet. For now the only install path is from source.
+> **Status: beta.** humex is published on PyPI but APIs may still change
+> between 0.x releases.
 
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-beta-yellow.svg)](#status)
 
 ---
 
-## Install (from source)
+## Install
+
+> **Always install humex into an isolated environment**, never your system or
+> `base`/anaconda Python. humex pins `protobuf<5`, and installing it alongside
+> other tools will silently downgrade shared packages and break them. A
+> dedicated venv (or pipx) keeps that pin contained.
+
+### From PyPI (recommended)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate   # isolate first
+pip install humex            # core + CLI
+pip install "humex[all]"     # core + all converter plugins (waymo, droid, lafan)
+```
+
+Or install just the converters you need — each pulls in `humex` automatically:
+
+```bash
+pip install humex-converter-waymo
+pip install humex-converter-droid
+pip install humex-converter-lafan
+```
+
+If you only want the `humex` CLI (not a library import), [pipx](https://pipx.pypa.io)
+isolates it automatically:
+
+```bash
+pipx install humex
+```
+
+### From source (development)
 
 ```bash
 git clone https://github.com/zerothlaw-ai/humex.git
 cd humex
 
-uv sync                          # if you have uv
-# — or —
+uv sync                          # creates .venv and installs all workspace members
+# — or, without uv —
+python3 -m venv .venv && source .venv/bin/activate
 pip install -e ./humex \
             -e ./converters/waymo \
             -e ./converters/droid \

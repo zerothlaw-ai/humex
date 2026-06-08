@@ -5,8 +5,7 @@ loading scenarios, converting metrics configs, and interacting with humex via na
 
 Classes:
 - ScenarioAPI: Load scenarios from various sources
-- ConvertAnalyzerMetricsAPI: Convert analyzer configs to DAG format
-- ComputeAnalyzerMetricsAPI: End-to-end metrics computation
+- ComputeDagMetricsAPI: End-to-end metrics computation from a DAG YAML
 - Chat: LLM chat interface
 - TranslateMetrics: Natural language to metrics config translator
 
@@ -16,13 +15,12 @@ Functions (for backward compatibility):
 """
 
 from .scenario_api import ScenarioAPI
-from .metrics_api import ConvertAnalyzerMetricsAPI, ComputeAnalyzerMetricsAPI
+from .metrics_api import ComputeDagMetricsAPI
 from .ai_api import Chat, TranslateMetrics
 
 __all__ = [
     'ScenarioAPI',
-    'ConvertAnalyzerMetricsAPI',
-    'ComputeAnalyzerMetricsAPI',
+    'ComputeDagMetricsAPI',
     'Chat',
     'TranslateMetrics',
 ]

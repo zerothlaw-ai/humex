@@ -7,7 +7,10 @@ simulation execution with analyzer-based metrics computation.
 from typing import Dict, List, Optional, Any, TYPE_CHECKING
 
 from .run_simulation_api import RunSimulationAPI
-from ..metrics_api import ComputeAnalyzerMetricsAPI
+# Imported from the concrete module: the analyzer APIs are retired from the
+# metrics_api package's public exports, but this (also retired) module keeps
+# working if imported directly.
+from ..metrics_api.compute_analyzer_metrics_api import ComputeAnalyzerMetricsAPI
 
 if TYPE_CHECKING:
     from humex.proto import metric_result_pb2

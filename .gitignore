@@ -25,6 +25,7 @@ pip-delete-this-directory.txt
 
 # Virtual environments
 .venv/
+.venv-build/
 venv/
 ENV/
 env/
@@ -66,6 +67,6 @@ converted/
 out/
 output/
 scratch/
-*.humex
+*.hpkg
 scenario[0-9]*/
 

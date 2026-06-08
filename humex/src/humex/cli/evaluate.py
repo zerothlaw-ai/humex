@@ -36,7 +36,7 @@ def evaluate(scenario_dir: Path, metric_yaml: Path, output_dir: Optional[Path]) 
     Example:
         humex evaluate converted/segment-1234 --metric configs/front_distance.yaml
     """
-    from humex.api import ScenarioAPI, ComputeAnalyzerMetricsAPI
+    from humex.api import ComputeDagMetricsAPI
 
     scenario_pb = scenario_dir / "scenario.pb"
     if not scenario_pb.exists():
@@ -47,12 +47,15 @@ def evaluate(scenario_dir: Path, metric_yaml: Path, output_dir: Optional[Path]) 
     out.mkdir(parents=True, exist_ok=True)
 
     console.print(f"[dim]Loading[/dim] {scenario_dir}")
-    api = ScenarioAPI()
-    scenario = api.load_from_folder(str(scenario_dir))
-
     console.print(f"[dim]Running DAG[/dim] {metric_yaml}")
-    compute = ComputeAnalyzerMetricsAPI()
-    result_pb = compute.compute(scenario=scenario, dag_yaml_path=str(metric_yaml))
+    # ComputeDagMetricsAPI loads the scenario (+ map / signal / sidecars) from
+    # the folder itself and evaluates the DAG directly. We write the result
+    # ourselves, so leave save_metrics_result=False.
+    result = ComputeDagMetricsAPI().compute(
+        dag_yaml_path=str(metric_yaml),
+        scenario_folder_path=str(scenario_dir),
+    )
+    result_pb = result["metric_result"]
 
     result_path = out / "metric_result.pb"
     with open(result_path, "wb") as f:

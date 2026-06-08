@@ -13,18 +13,15 @@ with full signatures, parameter descriptions, and usage examples::
     help(humex.api.core_apis)
 
     from humex.api.core_apis import (
-        analyze,
         ScenarioAPI,
-        ConvertAnalyzerMetricsAPI,
-        ComputeAnalyzerMetricsAPI,
+        ComputeDagMetricsAPI,
     )
 """
 
 from .api import (
     Chat,
     ScenarioAPI,
-    ConvertAnalyzerMetricsAPI,
-    ComputeAnalyzerMetricsAPI,
+    ComputeDagMetricsAPI,
 )
 from .hmap import HMap, LaneMap, RoadMap, RoleTable, build_lane_map, build_role_table
 
@@ -38,8 +35,7 @@ __api_version__ = 1
 
 __all__ = [
     "ScenarioAPI",
-    "ConvertAnalyzerMetricsAPI",
-    "ComputeAnalyzerMetricsAPI",
+    "ComputeDagMetricsAPI",
     "Chat",
     "HMap",
     "LaneMap",

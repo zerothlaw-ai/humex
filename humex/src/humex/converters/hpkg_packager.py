@@ -1,6 +1,6 @@
-"""Package a converted scenario directory into a portable ``.humex`` file.
+"""Package a converted scenario directory into a portable ``.hpkg`` file.
 
-A ``.humex`` file is a zip archive with this layout::
+A ``.hpkg`` (humex package) file is a zip archive with this layout::
 
     manifest.json
     scenario/
@@ -16,7 +16,7 @@ A ``.humex`` file is a zip archive with this layout::
 The packager doesn't care which converter produced the input directory — it
 just zips up whatever is there. DROID episodes carry robot.pb + robots/;
 Waymo scenarios carry signal.pb. Both flow through unchanged. Standard zip
-tools (``unzip``, ``python -m zipfile``) can crack a ``.humex`` open without
+tools (``unzip``, ``python -m zipfile``) can crack a ``.hpkg`` open without
 this library.
 """
 
@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-def package_as_humex(
+def package_as_hpkg(
     episode_dir: Path,
     output_path: Path,
     *,
@@ -37,7 +37,7 @@ def package_as_humex(
     source: Optional[dict[str, Any]] = None,
     scenario_metadata: Optional[dict[str, Any]] = None,
 ) -> Path:
-    """Zip ``episode_dir`` into a ``.humex`` file at ``output_path``.
+    """Zip ``episode_dir`` into a ``.hpkg`` file at ``output_path``.
 
     Returns the output path on success. Raises ``FileNotFoundError`` if the
     input dir is missing scenario.pb or map.pb.
