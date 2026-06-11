@@ -25,7 +25,15 @@ from .api import (
 )
 from .hmap import HMap, LaneMap, RoadMap, RoleTable, build_lane_map, build_role_table
 
-__version__ = "0.2.0"
+# Single source of truth is pyproject.toml; read it back from the installed
+# package metadata so this never drifts from the released version. Falls back
+# only when running from an uninstalled source tree.
+from importlib.metadata import version as _pkg_version, PackageNotFoundError
+
+try:
+    __version__ = _pkg_version("humex")
+except PackageNotFoundError:  # not installed (raw source checkout)
+    __version__ = "0.0.0+unknown"
 
 # Plugin-API version. Converter plugins may declare a ``MIN_HUMEX_API_VERSION``
 # class attr; the registry skips converters whose minimum exceeds this value

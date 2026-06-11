@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import json
 import zipfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
+
+from humex.converters.hpkg import MANIFEST, build_manifest
 
 
 def package_as_hpkg(
@@ -56,30 +57,26 @@ def package_as_hpkg(
     has_signal = (episode_dir / "signal.pb").exists()
     has_robot = (episode_dir / "robot.pb").exists()
 
-    manifest = {
-        "format_version": 1,
-        "name": name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "source": source or {},
-        "contents": {
-            "scenario_data": True,
-            "metric_result": False,
-            "scenario_config": False,
-            "signal_data": has_signal,
-            "robot_data": has_robot,
-        },
-        "scenario_metadata": scenario_metadata or {},
-    }
+    # One manifest schema, owned by humex.converters.hpkg.
+    manifest = build_manifest(
+        name=name,
+        source=source or {},
+        scenario_metadata=scenario_metadata,
+        has_scenario=True,
+        has_map=True,
+        has_signal=has_signal,
+        has_robot=has_robot,
+    )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+        zf.writestr(MANIFEST, json.dumps(manifest, indent=2))
         for f in sorted(episode_dir.rglob("*")):
             if not f.is_file():
                 continue
             rel = f.relative_to(episode_dir)
             # Skip any file we'd produce ourselves at the zip root.
-            if rel.as_posix() == "manifest.json":
+            if rel.as_posix() == MANIFEST:
                 continue
             zf.write(f, f"scenario/{rel.as_posix()}")
 
