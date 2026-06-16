@@ -67,6 +67,22 @@ humex plugins
 humex evaluate ./converted/scenario1 --metric path/to/metric.yaml
 ```
 
+## Local server (`humex serve`)
+
+Run a small HTTP server that exposes humex's simulate / evaluate / package
+operations over JSON, so a web frontend can drive your **local** humex install:
+
+```bash
+humex serve                                  # http://127.0.0.1:8900
+humex serve --port 9100 --cors-origin https://zeno.dev.zerothlaw.io
+```
+
+Endpoints: `/health`, `/parse-yaml`, `/test-dag`, `/import-package`,
+`/run-simulation`, `/evaluate-metrics`, `/build-hpkg`. Per-tab state is keyed by
+an `X-Humex-Session` header. CORS and Chrome's Private Network Access preflight
+are handled, so an HTTPS-deployed frontend can reach the loopback server in
+Chrome and Firefox (Safari blocks plain-HTTP localhost from HTTPS pages).
+
 ## Architecture
 
 ```
