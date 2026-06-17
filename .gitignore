@@ -40,6 +40,7 @@ env/
 
 # Local AI tool metadata (Claude Code session state, plans, settings)
 .claude/
+.playwright-mcp/
 
 # Project-specific - Data folders (keep folder structure, ignore generated files)
 data/scenarios/*

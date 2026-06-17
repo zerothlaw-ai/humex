@@ -8,7 +8,6 @@ from .evaluate import evaluate
 from .lane_map import lane_map
 from .package import package
 from .plugins import plugins
-from .serve import serve
 
 
 @click.group()
@@ -24,7 +23,6 @@ cli.add_command(evaluate)
 cli.add_command(lane_map, name="lane-map")
 cli.add_command(package)
 cli.add_command(plugins)
-cli.add_command(serve)
 
 
 if __name__ == "__main__":

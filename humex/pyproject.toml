@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "humex"
-version = "0.2.2"
+version = "0.2.3"
 description = "Behavioral metrics for autonomous-vehicle and physical-AI scenarios"
 authors = [{name = "humex contributors", email = "humex@zerothlaw.io"}]
 readme = "README.md"
