@@ -8,7 +8,7 @@ and compute its derivative (jerk) in a single step. This is the industry-standar
 approach for computing jerk from noisy discrete sensor data, avoiding the noise
 amplification that occurs when chaining separate smoothing and differentiation.
 
-The window size is specified in seconds (default 0.5s) and converted to frame
+The window size is specified in seconds (default 1.0s) and converted to frame
 count at runtime based on actual timestamps, so it behaves consistently
 regardless of the scenario's sampling frequency.
 """
@@ -31,7 +31,7 @@ class EgoLonJerk(MonitorBase):
     OUTPUT_TYPE: FLOAT
 
     Jerk is the 1st derivative of longitudinal acceleration, computed via
-    Savitzky-Golay filter (cubic polynomial, 0.5s window). The SG filter
+    Savitzky-Golay filter (cubic polynomial, 1.0s window). The SG filter
     fits a polynomial to the buffered acceleration samples and analytically
     differentiates it, producing a smoothed derivative in one step.
     """

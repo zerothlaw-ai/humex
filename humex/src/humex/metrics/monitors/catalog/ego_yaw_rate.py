@@ -37,7 +37,7 @@ class EgoYawRate(MonitorBase):
         """Calculate yaw rate for current frame.
 
         Returns:
-            float: Yaw rate in rad/s, or 0.0 for first frame or if ego not found
+            float: Yaw rate in rad/s, or 0.0 for first frame, or None if ego not found
         """
         frame = self.curr_frame
         ego = frame.get_ego(self.scenario)
