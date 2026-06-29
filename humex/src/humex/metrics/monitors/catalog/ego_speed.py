@@ -17,7 +17,7 @@ class EgoSpeed(MonitorBase):
         """Calculate ego vehicle speed for current frame.
         
         Returns:
-            float: Speed magnitude in meters per second, or 0.0 if ego not found
+            float: Speed magnitude in meters per second, or None if ego not found
         """
         frame = self.curr_frame
         ego = frame.get_ego(self.scenario)

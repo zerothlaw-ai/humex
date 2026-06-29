@@ -19,7 +19,7 @@ class EgoAcceleration(MonitorBase):
         """Calculate ego vehicle acceleration magnitude for current frame.
         
         Returns:
-            float: Acceleration magnitude in m/s², or 0.0 if ego not found
+            float: Acceleration magnitude in m/s², or None if ego not found
         """
         frame = self.curr_frame
         ego = frame.get_ego(self.scenario)
